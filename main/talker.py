@@ -1,10 +1,19 @@
-from gigi import gigi
+"""Command-line interface for Gigi chatbot."""
 
-my_gigi = gigi()
+from gigi import Gigi
 
-while True:
+
+def main() -> None:
+  """Run the command-line chat interface."""
+  my_gigi = Gigi()
+
+  while True:
     message = input("user: ")
     if message == "exit":
-        break
+      break
     response = my_gigi.talk(message)
     print("gigi:", response)
+
+
+if __name__ == "__main__":
+  main()
