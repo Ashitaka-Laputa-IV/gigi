@@ -20,7 +20,10 @@ class Gigi:
     self.api_base = os.getenv("API_BASE")
     self.client = OpenAI(base_url=self.api_base, api_key=self.api_key)
     self.history_file = "gigi_memory.json"
+    self.role_file = "gigi_role.json"
+    self.system_prompt = ""
     self.messages = self._load_history()
+    self._load_role()
 
   def _load_history(self) -> list[dict]:
     """Load conversation history from file.
@@ -36,6 +39,15 @@ class Gigi:
         return []
     return []
 
+  def _load_role(self) -> None:
+    """Load role/persona from file."""
+    if os.path.exists(self.role_file):
+      try:
+        with open(self.role_file, "r", encoding="utf-8") as f:
+          self.system_prompt = f.read().strip()
+      except Exception:
+        pass
+
   def _save_history(self) -> None:
     """Save conversation history to file."""
     with open(self.history_file, "w", encoding="utf-8") as f:
@@ -50,13 +62,18 @@ class Gigi:
     Returns:
         Gigi's response.
     """
-    self.messages.append({"role": "user", "content": message})
+    messages = []
+    if self.system_prompt:
+      messages.append({"role": "system", "content": self.system_prompt})
+    messages.extend(self.messages)
+    messages.append({"role": "user", "content": message})
 
     completion = self.client.chat.completions.create(
-        model=self.model, messages=self.messages
+        model=self.model, messages=messages
     )
 
     response = completion.choices[0].message.content
+    self.messages.append({"role": "user", "content": message})
     self.messages.append({"role": "assistant", "content": response})
 
     self._save_history()
