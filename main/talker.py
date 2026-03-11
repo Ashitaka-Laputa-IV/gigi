@@ -11,6 +11,14 @@ def main() -> None:
     message = input("user: ")
     if message == "exit":
       break
+    if message == "clear":
+      my_gigi.clear_memory()
+      print("gigi: 对话历史已清空")
+      continue
+    if message == "summarize":
+      result = my_gigi.summarize_memory()
+      print(f"gigi: {result}")
+      continue
     response = my_gigi.talk(message)
     print("gigi:", response)
 

@@ -3,7 +3,7 @@
     "type": "function",
     "function": {
       "name": "get_current_time",
-      "description": "获取当前时间",
+      "description": "仅在用户明确询问时间、日期、现在几点等情况下才调用此工具,获取当前系统时间",
       "parameters": {
         "type": "object",
         "properties": {
@@ -13,6 +13,23 @@
           }
         },
         "required": []
+      }
+    }
+  },
+  {
+    "type": "function",
+    "function": {
+      "name": "read_file",
+      "description": "读取本地文本文件的内容。仅在用户明确要求读取文件、查看文件内容、打开文件时使用此工具",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "file_path": {
+            "type": "string",
+            "description": "要读取的文件路径，例如 '情书.txt' 或 './data/情书.txt'"
+          }
+        },
+        "required": ["file_path"]
       }
     }
   }
