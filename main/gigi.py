@@ -2,6 +2,7 @@
 
 import json
 import os
+from datetime import datetime
 
 from openai import OpenAI
 
@@ -22,10 +23,41 @@ class Gigi:
     self.client = OpenAI(base_url=self.api_base, api_key=self.api_key)
     self.history_file = "gigi_memory.json"
     self.role_file = "gigi_role.json"
+    self.tools_file = "gigi_tools.json"
     self.system_prompt = ""
     self.window_size = window_size
     self.messages = self._load_history()
     self._load_role()
+    self.tools = self._load_tools()
+
+  def _load_tools(self) -> list[dict]:
+    """Load tools definition from file.
+
+    Returns:
+        List of tool definitions.
+    """
+    if os.path.exists(self.tools_file):
+      try:
+        with open(self.tools_file, "r", encoding="utf-8") as f:
+          return json.load(f)
+      except Exception:
+        return []
+    return []
+
+  def _call_tool(self, name: str, arguments: dict) -> str:
+    """Execute a tool function.
+
+    Args:
+        name: Tool function name.
+        arguments: Tool function arguments.
+
+    Returns:
+        Tool execution result.
+    """
+    if name == "get_current_time":
+      fmt = arguments.get("format", "%Y-%m-%d %H:%M:%S")
+      return datetime.now().strftime(fmt)
+    return f"Unknown tool: {name}"
 
   def _load_history(self) -> list[dict]:
     """Load conversation history from file.
@@ -83,10 +115,29 @@ class Gigi:
     messages.append({"role": "user", "content": message})
 
     completion = self.client.chat.completions.create(
-        model=self.model, messages=messages
+        model=self.model, messages=messages, tools=self.tools
     )
 
-    response = completion.choices[0].message.content
+    response_message = completion.choices[0].message
+
+    if response_message.tool_calls:
+      messages.append(response_message)
+      for tool_call in response_message.tool_calls:
+        func_name = tool_call.function.name
+        func_args = json.loads(tool_call.function.arguments)
+        func_result = self._call_tool(func_name, func_args)
+        messages.append({
+          "tool_call_id": tool_call.id,
+          "role": "tool",
+          "name": func_name,
+          "content": func_result
+        })
+      completion = self.client.chat.completions.create(
+          model=self.model, messages=messages, tools=self.tools
+      )
+      response_message = completion.choices[0].message
+
+    response = response_message.content or ""
     self.messages.append({"role": "user", "content": message})
     self.messages.append({"role": "assistant", "content": response})
 
