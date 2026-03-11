@@ -9,11 +9,12 @@ from openai import OpenAI
 class Gigi:
   """Gigi Robot."""
 
-  def __init__(self, model: str = "doubao-1-5-lite-32k-250115"):
+  def __init__(self, model: str = "doubao-1-5-lite-32k-250115", window_size: int = 10):
     """Initialize Gigi chatbot.
 
     Args:
         model: Model name, default is "doubao-1-5-lite-32k-250115".
+        window_size: Number of recent messages to keep in context, default is 10.
     """
     self.model = model
     self.api_key = os.getenv("API_KEY")
@@ -22,6 +23,7 @@ class Gigi:
     self.history_file = "gigi_memory.json"
     self.role_file = "gigi_role.json"
     self.system_prompt = ""
+    self.window_size = window_size
     self.messages = self._load_history()
     self._load_role()
 
@@ -53,6 +55,16 @@ class Gigi:
     with open(self.history_file, "w", encoding="utf-8") as f:
       json.dump(self.messages, f, ensure_ascii=False, indent=2)
 
+  def _apply_sliding_window(self) -> list[dict]:
+    """Apply sliding window to limit context length.
+
+    Returns:
+        Recent messages within window size.
+    """
+    if len(self.messages) <= self.window_size:
+      return self.messages
+    return self.messages[-self.window_size:]
+
   def talk(self, message: str) -> str:
     """Chat with Gigi.
 
@@ -65,7 +77,9 @@ class Gigi:
     messages = []
     if self.system_prompt:
       messages.append({"role": "system", "content": self.system_prompt})
-    messages.extend(self.messages)
+    
+    recent_messages = self._apply_sliding_window()
+    messages.extend(recent_messages)
     messages.append({"role": "user", "content": message})
 
     completion = self.client.chat.completions.create(
